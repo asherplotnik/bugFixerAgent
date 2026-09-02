@@ -1,5 +1,6 @@
 package com.asher.bugfixer.workflow;
 
+import com.asher.bugfixer.domain.BugFixRequest;
 import com.asher.bugfixer.domain.JiraIssue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,8 +27,8 @@ public final class HttpJiraIssueClient implements JiraIssueClient {
     }
 
     @Override
-    public JiraIssue fetch(String issueKey) throws Exception {
-        String key = URLEncoder.encode(issueKey, StandardCharsets.UTF_8);
+    public JiraIssue fetch(BugFixRequest bugFixRequest) throws Exception {
+        String key = URLEncoder.encode(bugFixRequest.issueKey(), StandardCharsets.UTF_8);
         URI uri = baseUri.resolve("rest/api/3/issue/" + key + "?fields=summary,description,status");
         HttpRequest request = HttpRequest.newBuilder(uri)
                 .header("Accept", "application/json")

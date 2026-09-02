@@ -7,12 +7,13 @@ import com.asher.bugfixer.workflow.BugFixWorkflow;
 import com.asher.bugfixer.workflow.InMemoryRequestQueue;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 
 @Configuration(proxyBeanMethods = false)
 public class SpringConfiguration {
     @Bean
-    AppConfig appConfig() {
-        return AppConfig.fromEnvironment();
+    AppConfig appConfig(Environment environment) {
+        return AppConfig.from(environment);
     }
 
     @Bean
@@ -36,7 +37,7 @@ public class SpringConfiguration {
     }
 
     @Bean
-    BugFixWorkflow bugFixWorkflow(AppConfig config) {
+    BugFixWorkflow bugFixWorkflow(AppConfig config) throws Exception {
         return BugFixWorkflow.create(config);
     }
 

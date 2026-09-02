@@ -24,8 +24,9 @@ class JiraWebhookControllerTest {
         AppConfig config = new AppConfig(
                 100_000, secret, null, null, null, false, "Ready for Agent", null,
                 "test", "main", false, "opencode", "model", Path.of("runtime/opencode-automation.json"),
-                1, false, "gemini-2.5-flash", ValidationProfile.NONE, Duration.ofMinutes(1),
-                Duration.ofMinutes(1), Path.of("runtime/work"));
+                null, null, null, 8787,
+                1, false, "gemini-2.5-flash", null, null, null, null, null, ValidationProfile.NONE, "npm", Duration.ofMinutes(1),
+                Duration.ofMinutes(1), Path.of("runtime/work"), false, false, null, "");
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new JiraWebhookController(
                 config,
                 new InMemoryRequestQueue(),

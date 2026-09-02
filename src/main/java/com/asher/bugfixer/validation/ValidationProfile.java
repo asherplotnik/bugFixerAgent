@@ -6,7 +6,9 @@ import java.util.List;
 public enum ValidationProfile {
     NONE,
     MAVEN_VERIFY,
-    GRADLE_CHECK;
+    GRADLE_CHECK,
+    NPM_TEST,
+    NPM_CI_TEST;
 
     public static ValidationProfile parse(String raw) {
         try {
@@ -21,6 +23,8 @@ public enum ValidationProfile {
             case NONE -> List.of();
             case MAVEN_VERIFY -> List.of("./mvnw", "--batch-mode", "--no-transfer-progress", "verify");
             case GRADLE_CHECK -> List.of("./gradlew", "--no-daemon", "check");
+            case NPM_TEST -> List.of("npm", "test");
+            case NPM_CI_TEST -> List.of("npm", "test");
         };
     }
 }

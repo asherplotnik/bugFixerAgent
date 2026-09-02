@@ -1,5 +1,21 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "model": "mastra-gemini/gemini-3.5-flash",
+  "provider": {
+    "mastra-gemini": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Gemini connector compatibility bridge",
+      "options": {
+        "baseURL": "http://127.0.0.1:{env:GEMINI_PROXY_PORT}",
+        "apiKey": "{env:GEMINI_API_KEY}"
+      },
+      "models": {
+        "gemini-3.5-flash": {
+          "name": "Gemini 3.5 Flash via configured connector"
+        }
+      }
+    }
+  },
   "permission": {
     "bash": "deny",
     "webfetch": "deny",

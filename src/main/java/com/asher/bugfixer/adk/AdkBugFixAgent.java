@@ -2,6 +2,7 @@ package com.asher.bugfixer.adk;
 
 import com.google.adk.agents.BaseAgent;
 import com.google.adk.agents.LlmAgent;
+import com.google.adk.models.BaseLlm;
 import com.google.adk.tools.FunctionTool;
 
 /** Defines the ADK wrapper whose only effectful capability is the constrained OpenCode tool. */
@@ -9,7 +10,7 @@ public final class AdkBugFixAgent {
     private AdkBugFixAgent() {
     }
 
-    public static BaseAgent create(String model) {
+    public static BaseAgent create(BaseLlm model) {
         return LlmAgent.builder()
                 .name("controlled-bug-fixer")
                 .description("Coordinates a pre-authorized OpenCode bug fix.")

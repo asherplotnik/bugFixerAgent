@@ -31,7 +31,19 @@ public final class FixedBuildValidator {
         if (profile == ValidationProfile.NONE) {
             return new ValidationResult(ValidationResult.Status.NOT_CONFIGURED, -1, "Validation is not configured.");
         }
-        List<String> command = commandForCurrentPlatform(profile, workspace);
+        List<List<String>> commands = commandsForCurrentPlatform(profile, workspace, config.npmBinary());
+        StringBuilder combinedOutput = new StringBuilder();
+        for (List<String> command : commands) {
+            ValidationResult result = run(command, workspace);
+            combinedOutput.append("$ ").append(String.join(" ", command)).append("\n").append(result.output()).append("\n");
+            if (result.status() != ValidationResult.Status.PASSED) {
+                return new ValidationResult(result.status(), result.exitCode(), combinedOutput.toString());
+            }
+        }
+        return new ValidationResult(ValidationResult.Status.PASSED, 0, combinedOutput.toString());
+    }
+
+    private ValidationResult run(List<String> command, Path workspace) throws Exception {
         ProcessBuilder builder = new ProcessBuilder(command)
                 .directory(workspace.toFile())
                 .redirectErrorStream(true);
@@ -59,23 +71,29 @@ public final class FixedBuildValidator {
         }
     }
 
-    static List<String> commandForCurrentPlatform(ValidationProfile profile, Path workspace) {
+    static List<List<String>> commandsForCurrentPlatform(ValidationProfile profile, Path workspace, String npmBinary) {
         if (profile == ValidationProfile.NONE) {
             return List.of();
         }
         boolean windows = System.getProperty("os.name").toLowerCase().contains("win");
+        if (profile == ValidationProfile.NPM_TEST) {
+            return List.of(List.of(npmBinary, "test"));
+        }
+        if (profile == ValidationProfile.NPM_CI_TEST) {
+            return List.of(List.of(npmBinary, "ci", "--ignore-scripts"), List.of(npmBinary, "test"));
+        }
         String wrapper = profile == ValidationProfile.MAVEN_VERIFY ? "mvnw" : "gradlew";
         if (windows && Files.exists(workspace.resolve(wrapper + ".cmd"))) {
-            return profile == ValidationProfile.MAVEN_VERIFY
+            return List.of(profile == ValidationProfile.MAVEN_VERIFY
                     ? List.of(wrapper + ".cmd", "--batch-mode", "--no-transfer-progress", "verify")
-                    : List.of(wrapper + ".bat", "--no-daemon", "check");
+                    : List.of(wrapper + ".bat", "--no-daemon", "check"));
         }
         if (Files.exists(workspace.resolve(wrapper))) {
-            return profile.command();
+            return List.of(profile.command());
         }
-        return profile == ValidationProfile.MAVEN_VERIFY
+        return List.of(profile == ValidationProfile.MAVEN_VERIFY
                 ? List.of("mvn", "--batch-mode", "--no-transfer-progress", "verify")
-                : List.of("gradle", "--no-daemon", "check");
+                : List.of("gradle", "--no-daemon", "check"));
     }
 
     private String readLimited(InputStream stream) throws IOException {

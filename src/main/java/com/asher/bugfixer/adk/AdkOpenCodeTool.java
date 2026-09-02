@@ -46,7 +46,9 @@ public final class AdkOpenCodeTool {
             invocation.result.set(result);
             return Map.of("status", result.succeeded() ? "success" : "error", "exitCode", result.exitCode(), "output", result.output());
         } catch (Exception exception) {
-            return Map.of("status", "error", "message", "OpenCode invocation failed: " + exception.getMessage());
+            String message = "OpenCode invocation failed: " + exception.getMessage();
+            invocation.result.set(new FixResult(true, false, -1, message));
+            return Map.of("status", "error", "message", message);
         }
     }
 

@@ -21,7 +21,7 @@ public final class BugFixWorkflow {
     private final WorkspaceManager workspaces;
     private final OpenCodeFixer fixer;
     private final FixedBuildValidator validator;
-    private final DryRunPublisher publisher;
+    private final PullRequestPublisher publisher;
 
     private BugFixWorkflow(
             AppConfig config,
@@ -29,7 +29,7 @@ public final class BugFixWorkflow {
             WorkspaceManager workspaces,
             OpenCodeFixer fixer,
             FixedBuildValidator validator,
-            DryRunPublisher publisher) {
+            PullRequestPublisher publisher) {
         this.config = config;
         this.jira = jira;
         this.workspaces = workspaces;
@@ -38,13 +38,15 @@ public final class BugFixWorkflow {
         this.publisher = publisher;
     }
 
-    public static BugFixWorkflow create(AppConfig config) {
-        JiraIssueClient jira = config.jiraBaseUrl() == null || config.jiraUserEmail() == null || config.jiraApiToken() == null
-                ? new UnavailableJiraIssueClient()
-                : new HttpJiraIssueClient(config.jiraBaseUrl(), config.jiraUserEmail(), config.jiraApiToken());
+    public static BugFixWorkflow create(AppConfig config) throws Exception {
+        JiraIssueClient jira = config.localSimulationEnabled()
+                ? new LocalSimulationJiraIssueClient(config)
+                : config.jiraBaseUrl() == null || config.jiraUserEmail() == null || config.jiraApiToken() == null
+                        ? new UnavailableJiraIssueClient()
+                        : new HttpJiraIssueClient(config.jiraBaseUrl(), config.jiraUserEmail(), config.jiraApiToken());
         OpenCodeFixer fixer = new OpenCodeCliFixer(config);
         if (config.adkEnabled()) {
-            fixer = new AdkFixCoordinator(fixer, config.adkModel());
+            fixer = new AdkFixCoordinator(fixer, config);
         }
         return new BugFixWorkflow(
                 config,
@@ -52,12 +54,13 @@ public final class BugFixWorkflow {
                 new WorkspaceManager(config),
                 fixer,
                 new FixedBuildValidator(config),
-                new DryRunPublisher());
+                config.publishingEnabled() ? new GitHubPullRequestPublisher(config) : new DryRunPublisher());
     }
 
     public WorkflowResult execute(BugFixRequest request) throws Exception {
         List<String> notes = new ArrayList<>();
-        JiraIssue issue = jira.fetch(request.issueKey());
+        JiraIssue issue = jira.fetch(request);
+        log(request.issueKey(), "Jira issue loaded with status=" + issue.status());
         if (!config.agentReadyStatus().equals(issue.status())) {
             return new WorkflowResult(WorkflowResult.Status.SKIPPED,
                     "Issue is no longer in the configured agent-ready status.", notes);
@@ -67,22 +70,39 @@ public final class BugFixWorkflow {
                     "OPENCODE_ENABLED is false; no source files were modified.", notes);
         }
 
+        log(request.issueKey(), "Preparing isolated repository workspace.");
         Path workspace = workspaces.prepare(request);
+        log(request.issueKey(), "Workspace prepared at " + workspace.getFileName());
         String feedback = "No validation has run yet.";
         for (int attempt = 1; attempt <= config.maxFixAttempts(); attempt++) {
+            log(request.issueKey(), "Starting OpenCode attempt " + attempt + ".");
             FixResult fix = fixer.fix(issue, config.targetRepositoryName(), workspace, feedback);
             notes.add("OpenCode attempt " + attempt + " exited with " + fix.exitCode());
+            log(request.issueKey(), "OpenCode attempt " + attempt + " completed: exit=" + fix.exitCode()
+                    + " succeeded=" + fix.succeeded() + " output=" + summarize(fix.output()));
             if (!fix.succeeded()) {
+                notes.add("OpenCode failure: " + shorten(fix.output()));
                 feedback = "OpenCode did not complete successfully:\n" + fix.output();
                 continue;
             }
 
+            log(request.issueKey(), "Starting trusted validation: " + config.validationProfile());
             ValidationResult validation = validator.validate(workspace);
             notes.add("Validation result: " + validation.status());
+            log(request.issueKey(), "Validation completed: status=" + validation.status()
+                    + " exit=" + validation.exitCode() + " output=" + summarize(validation.output()));
             if (validation.passed()) {
-                notes.add(publisher.publish(issue, workspace));
-                return new WorkflowResult(WorkflowResult.Status.COMPLETED_DRY_RUN,
-                        "Fix and configured validation completed. Publishing remains disabled.", notes);
+                log(request.issueKey(), "Validation passed; starting pull-request publication.");
+                PullRequestPublisher.Publication publication = publisher.publish(issue, workspace);
+                notes.add(publication.message());
+                log(request.issueKey(), "Pull-request publication completed: published=" + publication.published()
+                        + " message=" + publication.message());
+                return new WorkflowResult(
+                        publication.published() ? WorkflowResult.Status.COMPLETED_PUBLISHED : WorkflowResult.Status.COMPLETED_DRY_RUN,
+                        publication.published()
+                                ? "Fix, configured validation, and draft pull request creation completed."
+                                : "Fix and configured validation completed. Publishing remains disabled.",
+                        notes);
             }
             if (validation.status() == ValidationResult.Status.NOT_CONFIGURED) {
                 return new WorkflowResult(WorkflowResult.Status.SKIPPED,
@@ -92,5 +112,24 @@ public final class BugFixWorkflow {
         }
         return new WorkflowResult(WorkflowResult.Status.FAILED,
                 "OpenCode did not produce a passing change within the configured attempt limit.", notes);
+    }
+
+    private String shorten(String text) {
+        if (text == null || text.isBlank()) {
+            return "No output.";
+        }
+        return text.length() <= 1_000 ? text : text.substring(0, 1_000) + " [truncated]";
+    }
+
+    private String summarize(String text) {
+        if (text == null || text.isBlank()) {
+            return "<no output>";
+        }
+        String normalized = text.replace('\r', ' ').replace('\n', ' ');
+        return normalized.length() <= 4_000 ? normalized : normalized.substring(0, 4_000) + " [truncated]";
+    }
+
+    private void log(String issueKey, String message) {
+        System.out.println("Bug-fix workflow [" + issueKey + "] " + message);
     }
 }

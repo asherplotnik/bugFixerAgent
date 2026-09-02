@@ -13,17 +13,23 @@ A fail-closed local MVP for a Jira-triggered code-fix agent. It uses Java 21, Go
 
 ## Run locally
 
-1. Copy `.env.example` to `.env`; do not commit it.
-2. Set `JIRA_WEBHOOK_SECRET`. Keep `WORKER_ENABLED=false` for webhook-only testing.
-3. Export the values into the PowerShell session, then run:
+1. Copy `src/main/resources/application.yaml.example` to `src/main/resources/application.yaml`. The real `application.yaml` is ignored by Git, so it can hold local development settings and credentials. Start with the development-only webhook secret `local-test-secret`; the worker is disabled by default, so this is webhook-only mode.
+2. Run:
 
    ```powershell
-   $env:JIRA_WEBHOOK_SECRET = "your-secret"
    mvn test
    mvn spring-boot:run
    ```
 
-4. Confirm `GET http://localhost:8080/actuator/health` returns `{"status":"UP"}`.
+3. Confirm `GET http://localhost:8080/actuator/health` returns `{"status":"UP"}`.
+
+Kubernetes/production values still come from environment variables. Set a high-entropy `JIRA_WEBHOOK_SECRET` there; the local test secret must never be used outside development.
+
+## Local PR simulation
+
+The included `debugRepo` setup can exercise the complete local path without Jira. `LOCAL_SIMULATION_ENABLED=true` converts the signed webhook summary into a simulated, agent-ready Jira issue. This mode is strictly for local testing; it must be `false` in deployed environments, where the worker re-fetches Jira.
+
+To enable a real **draft** PR, set `worker-enabled`, `opencode-enabled`, `adk-enabled`, and `publishing-enabled` to `true` in the ignored `src/main/resources/application.yaml`. Set `github-token` to a GitHub fine-grained token with **Contents: Read and write** and **Pull requests: Read and write** permissions for `asherplotnik/debugRepo`. Set the `adk-*` connector credentials in the same file. In GKE, Secret-backed `ADK_*` environment variables override those local values. The publisher uses a fixed target repository, creates a unique `bugfix/...` branch, and cannot be selected by Jira or OpenCode input.
 
 For a controlled local worker test, set all of the following deliberately: `WORKER_ENABLED=true`, `JIRA_BASE_URL`, `JIRA_USER_EMAIL`, `JIRA_API_TOKEN`, `TARGET_REPOSITORY`, `OPENCODE_ENABLED=true`, and a non-`NONE` `VALIDATION_PROFILE`. The worker remains dry-run after validation.
 

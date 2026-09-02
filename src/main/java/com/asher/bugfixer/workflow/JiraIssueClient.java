@@ -1,7 +1,8 @@
 package com.asher.bugfixer.workflow;
 
+import com.asher.bugfixer.domain.BugFixRequest;
 import com.asher.bugfixer.domain.JiraIssue;
 
 public interface JiraIssueClient {
-    JiraIssue fetch(String issueKey) throws Exception;
+    JiraIssue fetch(BugFixRequest request) throws Exception;
 }
