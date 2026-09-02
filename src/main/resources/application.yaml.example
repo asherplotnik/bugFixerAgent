@@ -1,0 +1,35 @@
+server:
+  port: 8080
+
+# Copy to application.yaml for local development. Keep actual credentials only
+# in application.yaml, which is ignored by Git.
+bugfixer:
+  jira-webhook-secret: local-test-secret
+  max-webhook-bytes: 1048576
+  worker-enabled: false
+  agent-ready-status: Ready for Agent
+  target-repository: ../debugRepo
+  target-repository-name: debugRepo
+  target-branch: main
+  opencode-enabled: false
+  opencode-binary: opencode
+  opencode-model: mastra-gemini/gemini-3.5-flash
+  opencode-config: runtime/opencode-automation.json
+  # Root connector URL; OpenCode starts a loopback-only compatibility bridge for this endpoint.
+  gemini-connector-base-url:
+  gemini-vertex-project:
+  gemini-vertex-location:
+  gemini-proxy-port: 8787
+  max-fix-attempts: 3
+  adk-enabled: false
+  adk-model: gemini-2.5-flash
+  adk-api-key:
+  adk-base-url:
+  adk-authorization:
+  adk-client-id:
+  adk-client-secret:
+  validation-profile: NPM_CI_TEST
+  local-simulation-enabled: true
+  publishing-enabled: false
+  github-repository: asherplotnik/debugRepo
+  # github-token: paste-a-fine-grained-token-here
