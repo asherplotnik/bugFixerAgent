@@ -1,0 +1,5 @@
+openhands-sdk==1.44.1
+binaryornot==0.6.0
+func-timeout==4.3.5
+libtmux==0.62.0
+tom-swe==1.0.3

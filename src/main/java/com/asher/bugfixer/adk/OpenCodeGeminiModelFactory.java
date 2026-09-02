@@ -8,7 +8,7 @@ import com.google.genai.types.HttpOptions;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** Builds the ADK Gemini client from the same connector configuration OpenCode uses locally. */
+/** Builds the ADK Gemini client from the same connector configuration OpenHands uses locally. */
 public final class OpenCodeGeminiModelFactory {
     private OpenCodeGeminiModelFactory() {
     }

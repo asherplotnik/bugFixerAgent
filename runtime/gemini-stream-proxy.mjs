@@ -113,12 +113,14 @@ async function handleChatCompletions(request, response) {
     response.end(detail || JSON.stringify({ error: { message: "Gemini connector request failed." } }));
     return;
   }
-  response.writeHead(200, { "cache-control": "no-cache", connection: "keep-alive", "content-type": "text/event-stream" });
+  if (body.stream) response.writeHead(200, { "cache-control": "no-cache", connection: "keep-alive", "content-type": "text/event-stream" });
   const id = `chatcmpl-${randomUUID()}`;
   let transcript = "";
   let sentRole = false;
   let toolIndex = 0;
   let usedTools = false;
+  let responseText = "";
+  const responseToolCalls = [];
   for await (const chunk of upstream.body) transcript += Buffer.from(chunk).toString("utf8");
   if (transcript.trimStart().startsWith('"')) transcript = JSON.parse(transcript);
   for (const frame of transcript.split(/\r?\n\r?\n/)) for (const line of frame.split(/\r?\n/)) {
@@ -127,18 +129,34 @@ async function handleChatCompletions(request, response) {
     try { event = JSON.parse(line.slice(6)); } catch { continue; }
     for (const part of event.candidates?.[0]?.content?.parts ?? []) {
       if (typeof part.text === "string") {
-        sendChunk(response, id, body.model, sentRole ? { content: part.text } : { role: "assistant", content: part.text });
+        responseText += part.text;
+        if (body.stream) sendChunk(response, id, body.model, sentRole ? { content: part.text } : { role: "assistant", content: part.text });
         sentRole = true;
       }
       if (part.functionCall?.name) {
-        sendChunk(response, id, body.model, { role: sentRole ? undefined : "assistant", tool_calls: [{ index: toolIndex++, id: callIdForSignature(part.thoughtSignature), type: "function", function: { name: part.functionCall.name, arguments: JSON.stringify(part.functionCall.args ?? {}) } }] });
+        const toolCall = { index: toolIndex++, id: callIdForSignature(part.thoughtSignature), type: "function", function: { name: part.functionCall.name, arguments: JSON.stringify(part.functionCall.args ?? {}) } };
+        responseToolCalls.push(toolCall);
+        if (body.stream) sendChunk(response, id, body.model, { role: sentRole ? undefined : "assistant", tool_calls: [toolCall] });
         sentRole = true;
         usedTools = true;
       }
     }
   }
-  sendChunk(response, id, body.model, {}, usedTools ? "tool_calls" : "stop");
-  response.end("data: [DONE]\n\n");
+  if (body.stream) {
+    sendChunk(response, id, body.model, {}, usedTools ? "tool_calls" : "stop");
+    response.end("data: [DONE]\n\n");
+    return;
+  }
+  const message = { role: "assistant", content: responseText || null };
+  if (responseToolCalls.length > 0) message.tool_calls = responseToolCalls.map(({ index, ...toolCall }) => toolCall);
+  response.writeHead(200, { "content-type": "application/json" });
+  response.end(JSON.stringify({
+    id,
+    object: "chat.completion",
+    created: Math.floor(Date.now() / 1000),
+    model: body.model,
+    choices: [{ index: 0, message, finish_reason: usedTools ? "tool_calls" : "stop" }]
+  }));
 }
 
 const server = http.createServer(async (request, response) => {

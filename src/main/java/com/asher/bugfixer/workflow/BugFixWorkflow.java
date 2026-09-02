@@ -5,9 +5,9 @@ import com.asher.bugfixer.adk.AdkFixCoordinator;
 import com.asher.bugfixer.domain.BugFixRequest;
 import com.asher.bugfixer.domain.JiraIssue;
 import com.asher.bugfixer.domain.WorkflowResult;
-import com.asher.bugfixer.opencode.FixResult;
-import com.asher.bugfixer.opencode.OpenCodeCliFixer;
-import com.asher.bugfixer.opencode.OpenCodeFixer;
+import com.asher.bugfixer.openhands.FixResult;
+import com.asher.bugfixer.openhands.OpenHandsFixer;
+import com.asher.bugfixer.openhands.OpenHandsPythonFixer;
 import com.asher.bugfixer.validation.FixedBuildValidator;
 import com.asher.bugfixer.validation.ValidationResult;
 import java.nio.file.Path;
@@ -19,7 +19,7 @@ public final class BugFixWorkflow {
     private final AppConfig config;
     private final JiraIssueClient jira;
     private final WorkspaceManager workspaces;
-    private final OpenCodeFixer fixer;
+    private final OpenHandsFixer fixer;
     private final FixedBuildValidator validator;
     private final PullRequestPublisher publisher;
 
@@ -27,7 +27,7 @@ public final class BugFixWorkflow {
             AppConfig config,
             JiraIssueClient jira,
             WorkspaceManager workspaces,
-            OpenCodeFixer fixer,
+            OpenHandsFixer fixer,
             FixedBuildValidator validator,
             PullRequestPublisher publisher) {
         this.config = config;
@@ -44,7 +44,7 @@ public final class BugFixWorkflow {
                 : config.jiraBaseUrl() == null || config.jiraUserEmail() == null || config.jiraApiToken() == null
                         ? new UnavailableJiraIssueClient()
                         : new HttpJiraIssueClient(config.jiraBaseUrl(), config.jiraUserEmail(), config.jiraApiToken());
-        OpenCodeFixer fixer = new OpenCodeCliFixer(config);
+        OpenHandsFixer fixer = new OpenHandsPythonFixer(config);
         if (config.adkEnabled()) {
             fixer = new AdkFixCoordinator(fixer, config);
         }
@@ -65,9 +65,9 @@ public final class BugFixWorkflow {
             return new WorkflowResult(WorkflowResult.Status.SKIPPED,
                     "Issue is no longer in the configured agent-ready status.", notes);
         }
-        if (!config.opencodeEnabled()) {
+        if (!config.openhandsEnabled()) {
             return new WorkflowResult(WorkflowResult.Status.SKIPPED,
-                    "OPENCODE_ENABLED is false; no source files were modified.", notes);
+                    "OPENHANDS_ENABLED is false; no source files were modified.", notes);
         }
 
         log(request.issueKey(), "Preparing isolated repository workspace.");
@@ -75,14 +75,14 @@ public final class BugFixWorkflow {
         log(request.issueKey(), "Workspace prepared at " + workspace.getFileName());
         String feedback = "No validation has run yet.";
         for (int attempt = 1; attempt <= config.maxFixAttempts(); attempt++) {
-            log(request.issueKey(), "Starting OpenCode attempt " + attempt + ".");
+            log(request.issueKey(), "Starting OpenHands attempt " + attempt + ".");
             FixResult fix = fixer.fix(issue, config.targetRepositoryName(), workspace, feedback);
-            notes.add("OpenCode attempt " + attempt + " exited with " + fix.exitCode());
-            log(request.issueKey(), "OpenCode attempt " + attempt + " completed: exit=" + fix.exitCode()
+            notes.add("OpenHands attempt " + attempt + " exited with " + fix.exitCode());
+            log(request.issueKey(), "OpenHands attempt " + attempt + " completed: exit=" + fix.exitCode()
                     + " succeeded=" + fix.succeeded() + " output=" + summarize(fix.output()));
             if (!fix.succeeded()) {
-                notes.add("OpenCode failure: " + shorten(fix.output()));
-                feedback = "OpenCode did not complete successfully:\n" + fix.output();
+                notes.add("OpenHands failure: " + shorten(fix.output()));
+                feedback = "OpenHands did not complete successfully:\n" + fix.output();
                 continue;
             }
 
@@ -111,7 +111,7 @@ public final class BugFixWorkflow {
             feedback = "The trusted validation command failed (exit " + validation.exitCode() + "):\n" + validation.output();
         }
         return new WorkflowResult(WorkflowResult.Status.FAILED,
-                "OpenCode did not produce a passing change within the configured attempt limit.", notes);
+                "OpenHands did not produce a passing change within the configured attempt limit.", notes);
     }
 
     private String shorten(String text) {
