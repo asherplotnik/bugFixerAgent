@@ -1,0 +1,5 @@
+# The OpenHands runtime-tools distribution declares optional browser tooling.
+# Install this file with ``pip install --no-deps -r ...`` after the explicit,
+# minimal dependencies in openhands-requirements.txt. The worker imports and
+# registers only FileEditorTool.
+openhands-tools==1.44.1

@@ -1,6 +1,7 @@
 package com.asher.bugfixer;
 
 import com.asher.bugfixer.validation.ValidationProfile;
+import com.asher.bugfixer.openhands.OpenHandsProvider;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Locale;
@@ -25,6 +26,14 @@ public record AppConfig(
         String opencodeBinary,
         String opencodeModel,
         Path opencodeConfig,
+        boolean openhandsEnabled,
+        String openhandsPythonBinary,
+        Path openhandsWorkerScript,
+        OpenHandsProvider openhandsProvider,
+        String openhandsModel,
+        String openhandsGeminiApiKey,
+        String groqBaseUrl,
+        String groqApiKey,
         String geminiConnectorBaseUrl,
         String geminiVertexProject,
         String geminiVertexLocation,
@@ -40,6 +49,7 @@ public record AppConfig(
         ValidationProfile validationProfile,
         String npmBinary,
         Duration opencodeTimeout,
+        Duration openhandsTimeout,
         Duration validationTimeout,
         Path workspaceRoot,
         boolean localSimulationEnabled,
@@ -64,6 +74,14 @@ public record AppConfig(
                 value(environment, "OPENCODE_BINARY", "opencode"),
                 value(environment, "OPENCODE_MODEL", "mastra-gemini/gemini-3.5-flash"),
                 appRoot.resolve(value(environment, "OPENCODE_CONFIG", "runtime/opencode-automation.json")).normalize(),
+                bool(environment, "OPENHANDS_ENABLED", false),
+                value(environment, "OPENHANDS_PYTHON_BINARY", "python3"),
+                appRoot.resolve(value(environment, "OPENHANDS_WORKER_SCRIPT", "runtime/openhands_worker.py")).normalize(),
+                OpenHandsProvider.parse(value(environment, "OPENHANDS_PROVIDER", "GEMINI")),
+                value(environment, "OPENHANDS_MODEL", "gemini-3.5-flash"),
+                firstNonBlank(optional(environment, "OPENHANDS_GEMINI_API_KEY"), optional(environment, "ADK_API_KEY")),
+                value(environment, "GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
+                optional(environment, "GROQ_API_KEY"),
                 optional(environment, "GEMINI_CONNECTOR_BASE_URL"),
                 optional(environment, "GEMINI_VERTEX_PROJECT"),
                 optional(environment, "GEMINI_VERTEX_LOCATION"),
@@ -79,6 +97,7 @@ public record AppConfig(
                 ValidationProfile.parse(value(environment, "VALIDATION_PROFILE", "NONE")),
                 value(environment, "NPM_BINARY", "npm"),
                 Duration.ofMinutes(integer(environment, "OPENCODE_TIMEOUT_MINUTES", 15, 1, 60)),
+                Duration.ofMinutes(integer(environment, "OPENHANDS_TIMEOUT_MINUTES", 15, 1, 60)),
                 Duration.ofMinutes(integer(environment, "VALIDATION_TIMEOUT_MINUTES", 20, 1, 90)),
                 appRoot.resolve("runtime/work").normalize(),
                 bool(environment, "LOCAL_SIMULATION_ENABLED", false),
@@ -115,6 +134,10 @@ public record AppConfig(
     private static String optional(Environment environment, String name) {
         String value = value(environment, name, null);
         return value == null || value.isBlank() ? null : value;
+    }
+
+    private static String firstNonBlank(String preferred, String fallback) {
+        return preferred == null || preferred.isBlank() ? fallback : preferred;
     }
 
     private static Path path(Environment environment, String name) {

@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.asher.bugfixer.AppConfig;
+import com.asher.bugfixer.openhands.OpenHandsProvider;
 import com.asher.bugfixer.validation.ValidationProfile;
 import com.asher.bugfixer.workflow.InMemoryRequestQueue;
 import java.nio.charset.StandardCharsets;
@@ -24,9 +25,11 @@ class JiraWebhookControllerTest {
         AppConfig config = new AppConfig(
                 100_000, secret, null, null, null, false, "Ready for Agent", null,
                 "test", "main", false, "opencode", "model", Path.of("runtime/opencode-automation.json"),
+                false, "python", Path.of("runtime/openhands_worker.py"), OpenHandsProvider.GEMINI, "model", null,
+                "https://api.groq.com/openai/v1", null,
                 null, null, null, 8787,
                 1, false, "gemini-2.5-flash", null, null, null, null, null, ValidationProfile.NONE, "npm", Duration.ofMinutes(1),
-                Duration.ofMinutes(1), Path.of("runtime/work"), false, false, null, "");
+                Duration.ofMinutes(1), Duration.ofMinutes(1), Path.of("runtime/work"), false, false, null, "");
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new JiraWebhookController(
                 config,
                 new InMemoryRequestQueue(),

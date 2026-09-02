@@ -11,16 +11,23 @@ bugfixer:
   target-repository: ../debugRepo
   target-repository-name: debugRepo
   target-branch: main
-  opencode-enabled: false
-  opencode-binary: opencode
-  opencode-model: mastra-gemini/gemini-3.5-flash
-  opencode-config: runtime/opencode-automation.json
-  # Root connector URL; OpenCode starts a loopback-only compatibility bridge for this endpoint.
+  openhands-enabled: false
+  openhands-python-binary: python3
+  openhands-worker-script: runtime/openhands_worker.py
+  # Supported values: GEMINI, GROQ. The provider is selected only from trusted configuration.
+  openhands-provider: GEMINI
+  openhands-model: gemini-3.5-flash
+  # Defaults to adk-api-key when blank.
+  openhands-gemini-api-key:
+  groq-base-url: https://api.groq.com/openai/v1
+  groq-api-key:
+  # Root connector URL; the service starts a loopback-only bridge for Gemini.
   gemini-connector-base-url:
   gemini-vertex-project:
   gemini-vertex-location:
   gemini-proxy-port: 8787
   max-fix-attempts: 3
+  openhands-timeout-minutes: 20
   adk-enabled: false
   adk-model: gemini-2.5-flash
   adk-api-key:

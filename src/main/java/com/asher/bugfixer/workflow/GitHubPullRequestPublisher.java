@@ -16,7 +16,7 @@ import java.util.UUID;
 
 /**
  * Explicitly enabled publisher. It uses a configured GitHub repository and token;
- * neither the Jira payload nor OpenCode can select the target, branch, or API request.
+ * neither the Jira payload nor OpenHands can select the target, branch, or API request.
  */
 public final class GitHubPullRequestPublisher implements PullRequestPublisher {
     private final AppConfig config;
@@ -40,7 +40,7 @@ public final class GitHubPullRequestPublisher implements PullRequestPublisher {
             throw new IllegalStateException("Unable to inspect workspace changes: " + diff.output());
         }
         if (diff.output().isBlank()) {
-            throw new IllegalStateException("OpenCode and validation passed but no source changes exist; refusing to create an empty PR.");
+            throw new IllegalStateException("OpenHands and validation passed but no source changes exist; refusing to create an empty PR.");
         }
 
         String branch = branchName(issue.key());
