@@ -25,7 +25,7 @@ class JiraWebhookControllerTest {
         AppConfig config = new AppConfig(
                 100_000, secret, null, null, null, false, "Ready for Agent", null,
                 "test", "main", false, "opencode", "model", Path.of("runtime/opencode-automation.json"),
-                false, "python", Path.of("runtime/openhands_worker.py"), OpenHandsProvider.GEMINI, "model", null,
+                false, false, "bug-fixer-openhands:0.1.0", "python", Path.of("runtime/openhands_worker.py"), OpenHandsProvider.GEMINI, "model", null,
                 "https://api.groq.com/openai/v1", null,
                 null, null, null, 8787,
                 1, false, "gemini-2.5-flash", null, null, null, null, null, ValidationProfile.NONE, "npm", Duration.ofMinutes(1),

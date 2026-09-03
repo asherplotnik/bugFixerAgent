@@ -27,6 +27,8 @@ public record AppConfig(
         String opencodeModel,
         Path opencodeConfig,
         boolean openhandsEnabled,
+        boolean openhandsContainerEnabled,
+        String openhandsContainerImage,
         String openhandsPythonBinary,
         Path openhandsWorkerScript,
         OpenHandsProvider openhandsProvider,
@@ -59,9 +61,12 @@ public record AppConfig(
 
     public static AppConfig from(Environment environment) {
         Path appRoot = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        boolean oneShotWorker = bool(environment, "WORKER_MODE", false);
         return new AppConfig(
                 integer(environment, "MAX_WEBHOOK_BYTES", 1_048_576, 1, 10_485_760),
-                required(environment, "JIRA_WEBHOOK_SECRET"),
+                oneShotWorker
+                        ? value(environment, "JIRA_WEBHOOK_SECRET", "worker-mode-not-a-webhook-secret")
+                        : required(environment, "JIRA_WEBHOOK_SECRET"),
                 optional(environment, "JIRA_BASE_URL"),
                 optional(environment, "JIRA_USER_EMAIL"),
                 optional(environment, "JIRA_API_TOKEN"),
@@ -75,6 +80,8 @@ public record AppConfig(
                 value(environment, "OPENCODE_MODEL", "mastra-gemini/gemini-3.5-flash"),
                 appRoot.resolve(value(environment, "OPENCODE_CONFIG", "runtime/opencode-automation.json")).normalize(),
                 bool(environment, "OPENHANDS_ENABLED", false),
+                bool(environment, "OPENHANDS_CONTAINER_ENABLED", false),
+                value(environment, "OPENHANDS_CONTAINER_IMAGE", "bug-fixer-openhands:0.1.0"),
                 value(environment, "OPENHANDS_PYTHON_BINARY", "python3"),
                 appRoot.resolve(value(environment, "OPENHANDS_WORKER_SCRIPT", "runtime/openhands_worker.py")).normalize(),
                 OpenHandsProvider.parse(value(environment, "OPENHANDS_PROVIDER", "GEMINI")),

@@ -2,8 +2,6 @@ package com.asher.bugfixer.workflow;
 
 import com.asher.bugfixer.AppConfig;
 import com.asher.bugfixer.domain.JiraIssue;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -13,6 +11,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Explicitly enabled publisher. It uses a configured GitHub repository and token;
@@ -21,7 +21,7 @@ import java.util.UUID;
 public final class GitHubPullRequestPublisher implements PullRequestPublisher {
     private final AppConfig config;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build();
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final JsonMapper mapper = JsonMapper.builder().build();
 
     public GitHubPullRequestPublisher(AppConfig config) {
         if (config.githubToken() == null || config.githubToken().isBlank()) {

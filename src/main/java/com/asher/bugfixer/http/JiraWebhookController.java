@@ -3,7 +3,6 @@ package com.asher.bugfixer.http;
 import com.asher.bugfixer.AppConfig;
 import com.asher.bugfixer.domain.BugFixRequest;
 import com.asher.bugfixer.workflow.InMemoryRequestQueue;
-import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpStatus;
@@ -14,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import tools.jackson.core.JacksonException;
 
 /** Public webhook endpoint: validates and queues work; it never executes a fix inline. */
 @RestController
@@ -67,7 +67,7 @@ public final class JiraWebhookController {
             }
             queue.enqueue(request);
             return ResponseEntity.accepted().body(Map.of("status", "queued", "issueKey", request.issueKey()));
-        } catch (IOException | IllegalArgumentException exception) {
+        } catch (JacksonException | IllegalArgumentException exception) {
             return response(HttpStatus.BAD_REQUEST, "error", "invalid_jira_payload");
         }
     }

@@ -2,8 +2,6 @@ package com.asher.bugfixer.workflow;
 
 import com.asher.bugfixer.domain.BugFixRequest;
 import com.asher.bugfixer.domain.JiraIssue;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
@@ -12,11 +10,13 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /** Jira Cloud reader. It is deliberately read-only; transitions and comments are not implemented yet. */
 public final class HttpJiraIssueClient implements JiraIssueClient {
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build();
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final JsonMapper mapper = JsonMapper.builder().build();
     private final URI baseUri;
     private final String authorization;
 

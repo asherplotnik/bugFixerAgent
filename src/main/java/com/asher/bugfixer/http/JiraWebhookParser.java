@@ -1,16 +1,15 @@
 package com.asher.bugfixer.http;
 
 import com.asher.bugfixer.domain.BugFixRequest;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
 import java.time.Instant;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /** Parses only the event fields needed to queue work. Jira text remains untrusted. */
 public final class JiraWebhookParser {
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final JsonMapper mapper = JsonMapper.builder().build();
 
-    public BugFixRequest parse(String deliveryId, byte[] rawBody) throws IOException {
+    public BugFixRequest parse(String deliveryId, byte[] rawBody) {
         JsonNode root = mapper.readTree(rawBody);
         String event = text(root, "webhookEvent");
         JsonNode issue = root.path("issue");

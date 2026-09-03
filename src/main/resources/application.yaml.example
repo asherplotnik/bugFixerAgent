@@ -12,6 +12,9 @@ bugfixer:
   target-repository-name: debugRepo
   target-branch: main
   openhands-enabled: false
+  # Set true locally to run each OpenHands attempt in Docker instead of as a host Python process.
+  openhands-container-enabled: false
+  openhands-container-image: bug-fixer-openhands:0.1.0
   openhands-python-binary: python3
   openhands-worker-script: runtime/openhands_worker.py
   # Supported values: GEMINI, GROQ. The provider is selected only from trusted configuration.

@@ -43,6 +43,12 @@ Set `openhands-provider: GEMINI` to use the same Gemini connector credentials as
 
 For a controlled local worker test, set all of the following deliberately: `WORKER_ENABLED=true`, `JIRA_BASE_URL`, `JIRA_USER_EMAIL`, `JIRA_API_TOKEN`, `TARGET_REPOSITORY`, `OPENHANDS_ENABLED=true`, a selected `OPENHANDS_PROVIDER`, and a non-`NONE` `VALIDATION_PROFILE`. The worker remains dry-run after validation.
 
+## One-shot worker mode
+
+Set `WORKER_MODE=true` to run one workflow and exit, which is the execution mode intended for a Kubernetes Job. It does not start the HTTP server. Provide `JOB_ISSUE_KEY` and, when useful, `JOB_ISSUE_ID`, `JOB_DELIVERY_ID`, and `JOB_ISSUE_SUMMARY` as trusted Job environment variables. This mode does not require a Jira webhook secret because it never receives webhooks.
+
+Set `OPENHANDS_CONTAINER_ENABLED=true` to launch each OpenHands attempt in the configured `OPENHANDS_CONTAINER_IMAGE`. Java supplies a fixed Docker invocation, mounts only the prepared workspace at `/workspace`, and passes the trusted model configuration. The model cannot supply Docker arguments, an image name, or a mount path. Build the dedicated worker image with `docker build -f Dockerfile.openhands --tag bug-fixer-openhands:0.1.0 .`.
+
 ## Security boundary
 
 OpenHands has only the file-editor tool. Compilation happens outside OpenHands using a fixed argument list. This avoids model-provided shell commands but does **not** make Maven or Gradle safe: they can execute repository-controlled code. In GKE, validation must run in a credential-free sandbox, separate from the future publisher identity.
