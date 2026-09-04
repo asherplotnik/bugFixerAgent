@@ -3,6 +3,7 @@ package com.asher.bugfixer.openhands;
 import com.asher.bugfixer.AppConfig;
 import com.asher.bugfixer.domain.JiraIssue;
 import io.fabric8.kubernetes.api.model.ContainerBuilder;
+import io.fabric8.kubernetes.api.model.EmptyDirVolumeSourceBuilder;
 import io.fabric8.kubernetes.api.model.EnvVar;
 import io.fabric8.kubernetes.api.model.EnvVarSourceBuilder;
 import io.fabric8.kubernetes.api.model.PersistentVolumeClaimVolumeSourceBuilder;
@@ -82,7 +83,14 @@ public final class KubernetesOpenHandsFixer implements OpenHandsFixer {
                                         .withName("workspace")
                                         .withPersistentVolumeClaim(new PersistentVolumeClaimVolumeSourceBuilder()
                                                 .withClaimName(config.openhandsWorkspaceClaim()).build())
-                                        .build())
+                                        .build(),
+                                        // OpenHands worker image 0.1.0 persists conversation state beside the
+                                        // workspace at this absolute path. A Job-local emptyDir keeps that
+                                        // compatibility state writable without exposing any additional storage.
+                                        new VolumeBuilder()
+                                                .withName("openhands-state")
+                                                .withEmptyDir(new EmptyDirVolumeSourceBuilder().build())
+                                                .build())
                                 .withContainers(new ContainerBuilder()
                                         .withName("openhands")
                                         .withImage(config.openhandsContainerImage())
@@ -93,7 +101,11 @@ public final class KubernetesOpenHandsFixer implements OpenHandsFixer {
                                         .withEnv(workerEnvironment())
                                         .withVolumeMounts(new VolumeMountBuilder()
                                                 .withName("workspace").withMountPath("/workspace")
-                                                .withSubPath(workspaceSubPath).build())
+                                                .withSubPath(workspaceSubPath).build(),
+                                                new VolumeMountBuilder()
+                                                        .withName("openhands-state")
+                                                        .withMountPath("/.openhands-conversations")
+                                                        .build())
                                         .withNewSecurityContext()
                                         .withAllowPrivilegeEscalation(false)
                                         .withReadOnlyRootFilesystem(false)
