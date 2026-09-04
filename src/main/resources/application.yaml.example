@@ -12,9 +12,19 @@ bugfixer:
   target-repository-name: debugRepo
   target-branch: main
   openhands-enabled: false
-  # Set true locally to run each OpenHands attempt in Docker instead of as a host Python process.
+  # Legacy local switch. Prefer openhands-execution-mode below.
   openhands-container-enabled: false
+  # LOCAL runs Python within this process; DOCKER uses Docker Desktop; KUBERNETES creates one Job per attempt.
+  openhands-execution-mode: LOCAL
   openhands-container-image: bug-fixer-openhands:0.1.1
+  # Kubernetes/OpenShift settings. The Java deployment and each OpenHands Job mount this same PVC.
+  openhands-kubernetes-namespace: bug-fixer
+  openhands-kubernetes-service-account: bug-fixer-worker
+  # openhands-kubernetes-secret-name: bug-fixer-model
+  # openhands-workspace-claim: bug-fixer-workspace
+  openhands-job-ttl-seconds: 300
+  # Required when KUBERNETES mode is enabled: the mounted shared workspace root.
+  # workspace-root: /workspace-root
   openhands-python-binary: python3
   openhands-worker-script: runtime/openhands_worker.py
   # Supported values: GEMINI, GROQ. The provider is selected only from trusted configuration.

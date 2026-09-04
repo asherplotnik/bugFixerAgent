@@ -54,7 +54,8 @@ public final class GitHubPullRequestPublisher implements PullRequestPublisher {
         GitCommandRunner.requireSuccess(workspace,
                 List.of("remote", "set-url", "origin", "https://github.com/" + config.githubRepository() + ".git"),
                 "selecting the approved GitHub remote");
-        GitCommandRunner.requireSuccess(workspace, List.of("push", "--set-upstream", "origin", branch), "pushing the fix branch");
+        GitCommandRunner.requireSuccess(workspace, List.of("push", "--set-upstream", "origin", branch),
+                new GitHubRepositoryTool(config).gitEnvironment(), "pushing the fix branch");
 
         Map<String, Object> payload = Map.of(
                 "title", "[" + safeIssueKey(issue.key()) + "] Automated bug fix",

@@ -1,0 +1,31 @@
+# Confirms that the dedicated OpenHands image can start and exit in a Kubernetes Job.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: openhands-smoke
+  namespace: bug-fixer
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      serviceAccountName: bug-fixer-worker
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: openhands
+          image: bug-fixer-openhands:0.1.1
+          imagePullPolicy: Never
+          command: ["/app/runtime/openhands-container-worker.sh"]
+          args: ["--help"]
+          env:
+            - name: OPENHANDS_PROVIDER
+              value: GROQ
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: ["ALL"]

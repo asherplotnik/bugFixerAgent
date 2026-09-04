@@ -7,6 +7,8 @@ import com.asher.bugfixer.domain.JiraIssue;
 import com.asher.bugfixer.domain.WorkflowResult;
 import com.asher.bugfixer.openhands.FixResult;
 import com.asher.bugfixer.openhands.DockerOpenHandsFixer;
+import com.asher.bugfixer.openhands.KubernetesOpenHandsFixer;
+import com.asher.bugfixer.openhands.OpenHandsExecutionMode;
 import com.asher.bugfixer.openhands.OpenHandsFixer;
 import com.asher.bugfixer.openhands.OpenHandsPythonFixer;
 import com.asher.bugfixer.validation.FixedBuildValidator;
@@ -45,9 +47,11 @@ public final class BugFixWorkflow {
                 : config.jiraBaseUrl() == null || config.jiraUserEmail() == null || config.jiraApiToken() == null
                         ? new UnavailableJiraIssueClient()
                         : new HttpJiraIssueClient(config.jiraBaseUrl(), config.jiraUserEmail(), config.jiraApiToken());
-        OpenHandsFixer fixer = config.openhandsContainerEnabled()
-                ? new DockerOpenHandsFixer(config)
-                : new OpenHandsPythonFixer(config);
+        OpenHandsFixer fixer = switch (config.openhandsExecutionMode()) {
+            case LOCAL -> new OpenHandsPythonFixer(config);
+            case DOCKER -> new DockerOpenHandsFixer(config);
+            case KUBERNETES -> new KubernetesOpenHandsFixer(config);
+        };
         if (config.adkEnabled()) {
             fixer = new AdkFixCoordinator(fixer, config);
         }

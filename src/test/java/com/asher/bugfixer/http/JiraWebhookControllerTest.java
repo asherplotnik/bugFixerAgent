@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.asher.bugfixer.AppConfig;
 import com.asher.bugfixer.openhands.OpenHandsProvider;
+import com.asher.bugfixer.openhands.OpenHandsExecutionMode;
 import com.asher.bugfixer.validation.ValidationProfile;
 import com.asher.bugfixer.workflow.InMemoryRequestQueue;
 import java.nio.charset.StandardCharsets;
@@ -24,7 +25,7 @@ class JiraWebhookControllerTest {
         String secret = "test-secret";
         AppConfig config = new AppConfig(
                 100_000, secret, null, null, null, false, "Ready for Agent", null,
-                "test", "main", false, false, "bug-fixer-openhands:0.1.1", "python", Path.of("runtime/openhands_worker.py"), OpenHandsProvider.GEMINI, "model", null,
+                "test", "main", false, false, OpenHandsExecutionMode.LOCAL, "bug-fixer-openhands:0.1.1", "default", "bug-fixer-worker", null, null, 300, "python", Path.of("runtime/openhands_worker.py"), OpenHandsProvider.GEMINI, "model", null,
                 "https://api.groq.com/openai/v1", null,
                 null, null, null, 8787,
                 1, false, "gemini-2.5-flash", null, null, null, null, null, ValidationProfile.NONE, "npm", Duration.ofMinutes(1),

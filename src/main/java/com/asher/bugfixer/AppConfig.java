@@ -2,6 +2,7 @@ package com.asher.bugfixer;
 
 import com.asher.bugfixer.validation.ValidationProfile;
 import com.asher.bugfixer.openhands.OpenHandsProvider;
+import com.asher.bugfixer.openhands.OpenHandsExecutionMode;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Locale;
@@ -24,7 +25,13 @@ public record AppConfig(
         String targetBranch,
         boolean openhandsEnabled,
         boolean openhandsContainerEnabled,
+        OpenHandsExecutionMode openhandsExecutionMode,
         String openhandsContainerImage,
+        String openhandsKubernetesNamespace,
+        String openhandsKubernetesServiceAccount,
+        String openhandsKubernetesSecretName,
+        String openhandsWorkspaceClaim,
+        int openhandsJobTtlSeconds,
         String openhandsPythonBinary,
         Path openhandsWorkerScript,
         OpenHandsProvider openhandsProvider,
@@ -76,7 +83,14 @@ public record AppConfig(
                 value(environment, "TARGET_BRANCH", "main"),
                 bool(environment, "OPENHANDS_ENABLED", false),
                 bool(environment, "OPENHANDS_CONTAINER_ENABLED", false),
+                OpenHandsExecutionMode.parse(value(environment, "OPENHANDS_EXECUTION_MODE",
+                        bool(environment, "OPENHANDS_CONTAINER_ENABLED", false) ? "DOCKER" : "LOCAL")),
                 value(environment, "OPENHANDS_CONTAINER_IMAGE", "bug-fixer-openhands:0.1.1"),
+                value(environment, "OPENHANDS_KUBERNETES_NAMESPACE", "default"),
+                value(environment, "OPENHANDS_KUBERNETES_SERVICE_ACCOUNT", "bug-fixer-worker"),
+                optional(environment, "OPENHANDS_KUBERNETES_SECRET_NAME"),
+                optional(environment, "OPENHANDS_WORKSPACE_CLAIM"),
+                integer(environment, "OPENHANDS_JOB_TTL_SECONDS", 300, 0, 86400),
                 value(environment, "OPENHANDS_PYTHON_BINARY", "python3"),
                 appRoot.resolve(value(environment, "OPENHANDS_WORKER_SCRIPT", "runtime/openhands_worker.py")).normalize(),
                 OpenHandsProvider.parse(value(environment, "OPENHANDS_PROVIDER", "GEMINI")),
@@ -100,7 +114,7 @@ public record AppConfig(
                 value(environment, "NPM_BINARY", "npm"),
                 Duration.ofMinutes(integer(environment, "OPENHANDS_TIMEOUT_MINUTES", 15, 1, 60)),
                 Duration.ofMinutes(integer(environment, "VALIDATION_TIMEOUT_MINUTES", 20, 1, 90)),
-                appRoot.resolve("runtime/work").normalize(),
+                workspaceRoot(environment, appRoot),
                 bool(environment, "LOCAL_SIMULATION_ENABLED", false),
                 bool(environment, "PUBLISHING_ENABLED", false),
                 optional(environment, "GITHUB_TOKEN"),
@@ -148,6 +162,11 @@ public record AppConfig(
     private static Path path(Environment environment, String name) {
         String value = value(environment, name, null);
         return value == null || value.isBlank() ? null : Path.of(value).toAbsolutePath().normalize();
+    }
+
+    private static Path workspaceRoot(Environment environment, Path appRoot) {
+        Path configured = path(environment, "WORKSPACE_ROOT");
+        return configured == null ? appRoot.resolve("runtime/work").normalize() : configured;
     }
 
     /**

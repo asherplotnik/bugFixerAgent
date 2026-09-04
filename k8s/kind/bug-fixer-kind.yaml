@@ -1,0 +1,211 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bug-fixer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bug-fixer-agent
+  namespace: bug-fixer
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bug-fixer-worker
+  namespace: bug-fixer
+automountServiceAccountToken: false
+---
+# The Java service can create and observe only its own namespace's Jobs and Pods.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bug-fixer-job-runner
+  namespace: bug-fixer
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bug-fixer-job-runner
+  namespace: bug-fixer
+subjects:
+  - kind: ServiceAccount
+    name: bug-fixer-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bug-fixer-job-runner
+---
+# Single-node Kind-only shared storage. Replace with an approved PVC StorageClass in OpenShift.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: bug-fixer-workspace-kind
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes: ["ReadWriteOnce"]
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: manual
+  hostPath:
+    path: /var/lib/bug-fixer-workspace
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: bug-fixer-workspace
+  namespace: bug-fixer
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: manual
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Local simulation only. Do not copy this Secret to OpenShift.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bug-fixer-webhook
+  namespace: bug-fixer
+type: Opaque
+stringData:
+  jira-webhook-secret: local-test-secret
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bug-fixer-agent
+  namespace: bug-fixer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: bug-fixer-agent
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: bug-fixer-agent
+    spec:
+      serviceAccountName: bug-fixer-agent
+      securityContext:
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: agent
+          image: bug-fixer-agent:kind
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SERVER_PORT
+              value: "8080"
+            - name: JIRA_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bug-fixer-webhook
+                  key: jira-webhook-secret
+            - name: WORKER_ENABLED
+              value: "true"
+            - name: LOCAL_SIMULATION_ENABLED
+              value: "true"
+            - name: OPENHANDS_ENABLED
+              value: "true"
+            - name: PUBLISHING_ENABLED
+              value: "true"
+            - name: OPENHANDS_EXECUTION_MODE
+              value: KUBERNETES
+            - name: OPENHANDS_CONTAINER_IMAGE
+              value: bug-fixer-openhands:0.1.1
+            - name: OPENHANDS_KUBERNETES_NAMESPACE
+              value: bug-fixer
+            - name: OPENHANDS_KUBERNETES_SERVICE_ACCOUNT
+              value: bug-fixer-worker
+            - name: OPENHANDS_KUBERNETES_SECRET_NAME
+              value: bug-fixer-model
+            - name: OPENHANDS_WORKSPACE_CLAIM
+              value: bug-fixer-workspace
+            - name: WORKSPACE_ROOT
+              value: /workspace-root
+            - name: TARGET_REPOSITORY
+              value: ""
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: bug-fixer-github
+                  key: github-token
+            - name: GITHUB_REPOSITORY
+              valueFrom:
+                secretKeyRef:
+                  name: bug-fixer-github
+                  key: github-repository
+            - name: TARGET_REPOSITORY_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: bug-fixer-runtime
+                  key: target-repository-name
+            - name: TARGET_BRANCH
+              valueFrom:
+                secretKeyRef:
+                  name: bug-fixer-runtime
+                  key: target-branch
+            - name: OPENHANDS_MODEL
+              valueFrom:
+                secretKeyRef:
+                  name: bug-fixer-runtime
+                  key: openhands-model
+            - name: VALIDATION_PROFILE
+              valueFrom:
+                secretKeyRef:
+                  name: bug-fixer-runtime
+                  key: validation-profile
+            - name: GEMINI_CONNECTOR_BASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: bug-fixer-runtime
+                  key: gemini-connector-base-url
+            - name: GEMINI_VERTEX_PROJECT
+              valueFrom:
+                secretKeyRef:
+                  name: bug-fixer-runtime
+                  key: gemini-vertex-project
+            - name: GEMINI_VERTEX_LOCATION
+              valueFrom:
+                secretKeyRef:
+                  name: bug-fixer-runtime
+                  key: gemini-vertex-location
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace-root
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+      volumes:
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: bug-fixer-workspace
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bug-fixer-agent
+  namespace: bug-fixer
+spec:
+  selector:
+    app.kubernetes.io/name: bug-fixer-agent
+  ports:
+    - port: 8080
+      targetPort: 8080

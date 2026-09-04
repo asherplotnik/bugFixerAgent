@@ -22,6 +22,12 @@ public final class WorkspaceManager {
             return workspace;
         }
         Path repository = config.targetRepository();
+        if (repository == null && !config.githubRepository().isBlank()) {
+            Files.createDirectories(config.workspaceRoot());
+            Path workspace = Files.createTempDirectory(config.workspaceRoot(), safePrefix(request.issueKey()));
+            new GitHubRepositoryTool(config).cloneRepository(config.workspaceRoot(), workspace);
+            return workspace;
+        }
         if (repository == null || !Files.isDirectory(repository.resolve(".git"))) {
             throw new IllegalStateException("TARGET_REPOSITORY must point to an approved local Git repository before a worker can run.");
         }
