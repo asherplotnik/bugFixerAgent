@@ -1,9 +1,11 @@
 package com.asher.bugfixer.validation;
 
 import com.asher.bugfixer.AppConfig;
+import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -58,10 +60,12 @@ public final class FixedBuildValidator {
 
         Process process = builder.start();
         try (ExecutorService readers = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
-            Future<String> output = readers.submit(() -> readLimited(process.getInputStream()));
+            InputStream processOutput = process.getInputStream();
+            Future<String> output = readers.submit(() -> readLimited(processOutput));
             boolean completed = process.waitFor(config.validationTimeout().toMillis(), TimeUnit.MILLISECONDS);
             if (!completed) {
-                process.destroyForcibly();
+                terminateProcessTree(process);
+                processOutput.close();
                 return new ValidationResult(ValidationResult.Status.TIMED_OUT, -1, awaitOutput(output) + "\nValidation timed out.");
             }
             return new ValidationResult(
@@ -80,7 +84,9 @@ public final class FixedBuildValidator {
             return List.of(List.of(npmBinary, "test"));
         }
         if (profile == ValidationProfile.NPM_CI_TEST) {
-            return List.of(List.of(npmBinary, "ci", "--ignore-scripts"), List.of(npmBinary, "test"));
+            return List.of(
+                    List.of(npmBinary, "ci", "--ignore-scripts", "--no-audit", "--no-fund"),
+                    List.of(npmBinary, "test"));
         }
         String wrapper = profile == ValidationProfile.MAVEN_VERIFY ? "mvnw" : "gradlew";
         if (windows && Files.exists(workspace.resolve(wrapper + ".cmd"))) {
@@ -97,13 +103,16 @@ public final class FixedBuildValidator {
     }
 
     private String readLimited(InputStream stream) throws IOException {
-        try (stream; ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            byte[] buffer = new byte[4096];
-            int count;
-            while ((count = stream.read(buffer)) != -1) {
+        try (stream;
+                BufferedReader reader = new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
+                ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println("Validation output: " + line);
+                byte[] bytes = (line + System.lineSeparator()).getBytes(StandardCharsets.UTF_8);
                 int remaining = MAX_OUTPUT_BYTES - output.size();
                 if (remaining > 0) {
-                    output.write(buffer, 0, Math.min(count, remaining));
+                    output.write(bytes, 0, Math.min(bytes.length, remaining));
                 }
             }
             return output.toString(StandardCharsets.UTF_8);
@@ -112,5 +121,10 @@ public final class FixedBuildValidator {
 
     private String awaitOutput(Future<String> output) throws InterruptedException, ExecutionException {
         return output.get();
+    }
+
+    private void terminateProcessTree(Process process) {
+        process.descendants().forEach(descendant -> descendant.destroyForcibly());
+        process.destroyForcibly();
     }
 }

@@ -85,7 +85,10 @@ new automated test when needed for the stated issue.
     conversation = Conversation(
         agent=agent,
         workspace=workspace,
-        persistence_dir=workspace.parent / ".openhands-conversations",
+        # The container mounts the repository at /workspace, whose parent is
+        # the read-only filesystem root. Keep ephemeral conversation state in
+        # a writable runtime directory, never in the source workspace.
+        persistence_dir=Path(os.environ.get("OPENHANDS_PERSISTENCE_DIR", "/tmp/openhands-conversations")),
         callbacks=[on_event],
         visualizer=None,
         max_iteration_per_run=100,

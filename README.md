@@ -51,7 +51,7 @@ For a controlled local worker test, set all of the following deliberately: `WORK
 
 Set `WORKER_MODE=true` to run one workflow and exit, which is the execution mode intended for a Kubernetes Job. It does not start the HTTP server. Provide `JOB_ISSUE_KEY` and, when useful, `JOB_ISSUE_ID`, `JOB_DELIVERY_ID`, and `JOB_ISSUE_SUMMARY` as trusted Job environment variables. This mode does not require a Jira webhook secret because it never receives webhooks.
 
-Set `OPENHANDS_CONTAINER_ENABLED=true` to launch each OpenHands attempt in the configured `OPENHANDS_CONTAINER_IMAGE`. Java supplies a fixed Docker invocation, mounts only the prepared workspace at `/workspace`, and passes the trusted model configuration. The model cannot supply Docker arguments, an image name, or a mount path. Build the dedicated worker image with `docker build -f Dockerfile.openhands --tag bug-fixer-openhands:0.1.0 .`.
+Set `OPENHANDS_CONTAINER_ENABLED=true` to launch each OpenHands attempt in the configured `OPENHANDS_CONTAINER_IMAGE`. Java supplies a fixed Docker invocation, mounts only the prepared workspace at `/workspace`, and passes the trusted model configuration. The model cannot supply Docker arguments, an image name, or a mount path. Build the dedicated worker image with `docker build -f Dockerfile.openhands --tag bug-fixer-openhands:0.1.1 .`.
 
 ## Security boundary
 

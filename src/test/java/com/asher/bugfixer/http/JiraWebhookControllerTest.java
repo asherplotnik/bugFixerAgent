@@ -24,12 +24,11 @@ class JiraWebhookControllerTest {
         String secret = "test-secret";
         AppConfig config = new AppConfig(
                 100_000, secret, null, null, null, false, "Ready for Agent", null,
-                "test", "main", false, "opencode", "model", Path.of("runtime/opencode-automation.json"),
-                false, false, "bug-fixer-openhands:0.1.0", "python", Path.of("runtime/openhands_worker.py"), OpenHandsProvider.GEMINI, "model", null,
+                "test", "main", false, false, "bug-fixer-openhands:0.1.1", "python", Path.of("runtime/openhands_worker.py"), OpenHandsProvider.GEMINI, "model", null,
                 "https://api.groq.com/openai/v1", null,
                 null, null, null, 8787,
                 1, false, "gemini-2.5-flash", null, null, null, null, null, ValidationProfile.NONE, "npm", Duration.ofMinutes(1),
-                Duration.ofMinutes(1), Duration.ofMinutes(1), Path.of("runtime/work"), false, false, null, "", null, null, null,
+                Duration.ofMinutes(1), Path.of("runtime/work"), false, false, null, "", null, null, null,
                 Path.of("runtime/investigation-knowledge.md"));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new JiraWebhookController(
                 config,
