@@ -18,6 +18,10 @@ final class GitCommandRunner {
     }
 
     static Result run(Path directory, List<String> arguments) throws Exception {
+        return run(directory, arguments, Map.of());
+    }
+
+    static Result run(Path directory, List<String> arguments, Map<String, String> additions) throws Exception {
         List<String> command = new ArrayList<>(List.of("git"));
         command.addAll(arguments);
         ProcessBuilder builder = new ProcessBuilder(command)
@@ -25,7 +29,9 @@ final class GitCommandRunner {
                 .redirectErrorStream(true);
         Map<String, String> environment = builder.environment();
         environment.remove("GITHUB_TOKEN");
+        environment.remove("BITBUCKET_TOKEN");
         environment.remove("JIRA_API_TOKEN");
+        environment.putAll(additions);
         Process process = builder.start();
         if (!process.waitFor(60, TimeUnit.SECONDS)) {
             process.destroyForcibly();
@@ -36,6 +42,15 @@ final class GitCommandRunner {
 
     static void requireSuccess(Path directory, List<String> arguments, String action) throws Exception {
         Result result = run(directory, arguments);
+        requireSuccess(result, arguments, action);
+    }
+
+    static void requireSuccess(Path directory, List<String> arguments, Map<String, String> additions, String action) throws Exception {
+        Result result = run(directory, arguments, additions);
+        requireSuccess(result, arguments, action);
+    }
+
+    private static void requireSuccess(Result result, List<String> arguments, String action) {
         if (result.exitCode() != 0) {
             throw new IllegalStateException("Git failed while " + action + " (exit " + result.exitCode() + "): " + result.output());
         }

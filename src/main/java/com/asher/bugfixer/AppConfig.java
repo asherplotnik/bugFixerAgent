@@ -57,7 +57,11 @@ public record AppConfig(
         boolean localSimulationEnabled,
         boolean publishingEnabled,
         String githubToken,
-        String githubRepository) {
+        String githubRepository,
+        String bitbucketBaseUrl,
+        String bitbucketProjectKey,
+        String bitbucketToken,
+        Path investigationKnowledgeFile) {
 
     public static AppConfig from(Environment environment) {
         Path appRoot = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
@@ -110,7 +114,11 @@ public record AppConfig(
                 bool(environment, "LOCAL_SIMULATION_ENABLED", false),
                 bool(environment, "PUBLISHING_ENABLED", false),
                 optional(environment, "GITHUB_TOKEN"),
-                value(environment, "GITHUB_REPOSITORY", ""));
+                value(environment, "GITHUB_REPOSITORY", ""),
+                optional(environment, "BITBUCKET_BASE_URL"),
+                optional(environment, "BITBUCKET_PROJECT_KEY"),
+                optional(environment, "BITBUCKET_TOKEN"),
+                appRoot.resolve(value(environment, "INVESTIGATION_KNOWLEDGE_FILE", "runtime/investigation-knowledge.md")).normalize());
     }
 
     private static String required(Environment environment, String name) {

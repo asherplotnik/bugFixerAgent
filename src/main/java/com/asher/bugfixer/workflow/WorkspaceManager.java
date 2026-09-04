@@ -15,6 +15,12 @@ public final class WorkspaceManager {
     }
 
     public Path prepare(BugFixRequest request) throws Exception {
+        if (config.bitbucketBaseUrl() != null) {
+            Files.createDirectories(config.workspaceRoot());
+            Path workspace = Files.createTempDirectory(config.workspaceRoot(), safePrefix(request.issueKey()));
+            new BitbucketRepositoryTool(config).cloneRepository(config.workspaceRoot(), workspace);
+            return workspace;
+        }
         Path repository = config.targetRepository();
         if (repository == null || !Files.isDirectory(repository.resolve(".git"))) {
             throw new IllegalStateException("TARGET_REPOSITORY must point to an approved local Git repository before a worker can run.");

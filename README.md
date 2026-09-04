@@ -41,6 +41,10 @@ To enable a real **draft** PR, set `worker-enabled`, `openhands-enabled`, `adk-e
 
 Set `openhands-provider: GEMINI` to use the same Gemini connector credentials as ADK, through the loopback compatibility bridge. Set `openhands-provider: GROQ`, `openhands-model`, and `groq-api-key` to use Groq's OpenAI-compatible endpoint directly. The publisher uses a fixed target repository, creates a unique `bugfix/...` branch, and cannot be selected by Jira or OpenHands input.
 
+## Bitbucket Data Center publishing
+
+Set `BITBUCKET_BASE_URL=https://bitbucket.dev.local:8443`, `BITBUCKET_PROJECT_KEY` to `DMS` or `DIRM`, `TARGET_REPOSITORY_NAME`, and `BITBUCKET_TOKEN`. With `PUBLISHING_ENABLED=true`, the trusted Java workflow clones `https://bitbucket.dev.local:8443/scm/<project>/<repository>.git`, commits the validated diff to `bugfix/<jira-key>`, pushes it, and creates one Bitbucket pull request to the configured target branch. The token is supplied only to Java's Git and REST calls; it is never passed into OpenHands.
+
 For a controlled local worker test, set all of the following deliberately: `WORKER_ENABLED=true`, `JIRA_BASE_URL`, `JIRA_USER_EMAIL`, `JIRA_API_TOKEN`, `TARGET_REPOSITORY`, `OPENHANDS_ENABLED=true`, a selected `OPENHANDS_PROVIDER`, and a non-`NONE` `VALIDATION_PROFILE`. The worker remains dry-run after validation.
 
 ## One-shot worker mode

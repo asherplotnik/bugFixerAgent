@@ -29,7 +29,8 @@ class JiraWebhookControllerTest {
                 "https://api.groq.com/openai/v1", null,
                 null, null, null, 8787,
                 1, false, "gemini-2.5-flash", null, null, null, null, null, ValidationProfile.NONE, "npm", Duration.ofMinutes(1),
-                Duration.ofMinutes(1), Duration.ofMinutes(1), Path.of("runtime/work"), false, false, null, "");
+                Duration.ofMinutes(1), Duration.ofMinutes(1), Path.of("runtime/work"), false, false, null, "", null, null, null,
+                Path.of("runtime/investigation-knowledge.md"));
         MockMvc mvc = MockMvcBuilders.standaloneSetup(new JiraWebhookController(
                 config,
                 new InMemoryRequestQueue(),

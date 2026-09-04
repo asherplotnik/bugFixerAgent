@@ -43,3 +43,8 @@ bugfixer:
   publishing-enabled: false
   github-repository: asherplotnik/debugRepo
   # github-token: paste-a-fine-grained-token-here
+  # Bitbucket Data Center mode. Set all three values to clone from, push to, and create a PR in one approved repository.
+  # bitbucket-base-url: https://bitbucket.dev.local:8443
+  # bitbucket-project-key: DMS # Allowed values: DMS, DIRM
+  # bitbucket-token: store this only in a local ignored file or the bank secret manager
+  investigation-knowledge-file: runtime/investigation-knowledge.md

@@ -51,13 +51,19 @@ public final class BugFixWorkflow {
         if (config.adkEnabled()) {
             fixer = new AdkFixCoordinator(fixer, config);
         }
+        PullRequestPublisher publisher = new DryRunPublisher();
+        if (config.publishingEnabled()) {
+            publisher = config.bitbucketBaseUrl() == null
+                    ? new GitHubPullRequestPublisher(config)
+                    : new BitbucketPullRequestPublisher(config);
+        }
         return new BugFixWorkflow(
                 config,
                 jira,
                 new WorkspaceManager(config),
                 fixer,
                 new FixedBuildValidator(config),
-                config.publishingEnabled() ? new GitHubPullRequestPublisher(config) : new DryRunPublisher());
+                publisher);
     }
 
     public WorkflowResult execute(BugFixRequest request) throws Exception {

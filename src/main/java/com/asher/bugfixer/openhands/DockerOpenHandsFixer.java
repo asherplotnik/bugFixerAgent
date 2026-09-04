@@ -42,7 +42,7 @@ public final class DockerOpenHandsFixer implements OpenHandsFixer {
         command.addAll(List.of(
                 config.openhandsContainerImage(),
                 "--workspace", "/workspace",
-                "--prompt", OpenHandsPythonFixer.prompt(issue, repositoryName, validationFeedback)));
+                "--prompt", OpenHandsPythonFixer.prompt(issue, repositoryName, validationFeedback, InvestigationKnowledge.load(config))));
         ProcessBuilder builder = new ProcessBuilder(command).directory(workspace.toFile()).redirectErrorStream(true);
         Map<String, String> environment = builder.environment();
         configureWorkerEnvironment(environment);
