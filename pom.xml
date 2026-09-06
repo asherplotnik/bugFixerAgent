@@ -53,16 +53,19 @@
     </dependencies>
 
     <build>
-        <!-- application.yaml is an ignored local file and must never be packaged into an image. -->
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <excludes>
-                    <exclude>application.yaml</exclude>
-                </excludes>
-            </resource>
-        </resources>
         <plugins>
+            <!--
+                Keep the ignored local config on the development classpath, while excluding it
+                from the JAR that is used to build deployment images.
+            -->
+            <plugin>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>application.yaml</exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
