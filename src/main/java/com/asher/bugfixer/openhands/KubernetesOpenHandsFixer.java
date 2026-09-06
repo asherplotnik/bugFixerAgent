@@ -16,6 +16,8 @@ import io.fabric8.kubernetes.api.model.batch.v1.Job;
 import io.fabric8.kubernetes.api.model.batch.v1.JobBuilder;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +26,10 @@ import java.util.concurrent.TimeUnit;
 /** Creates one restricted Kubernetes Job for an already-prepared isolated workspace. */
 public final class KubernetesOpenHandsFixer implements OpenHandsFixer {
     private static final int MAX_OUTPUT_CHARS = 128 * 1024;
+    private static final String KIND_NODE = "bug-fixer-control-plane";
+    private static final String KIND_WORKSPACE_ROOT = "/var/lib/bug-fixer-workspace";
+    private static final String RUNTIME_ROOT = "/run/openhands";
+    private static final String RUNTIME_WORKSPACE = RUNTIME_ROOT + "/workspace";
     private final AppConfig config;
 
     public KubernetesOpenHandsFixer(AppConfig config) {
@@ -38,6 +44,7 @@ public final class KubernetesOpenHandsFixer implements OpenHandsFixer {
         String workspaceSubPath = workspaceSubPath(workspace);
         String prompt = OpenHandsPythonFixer.prompt(
                 issue, repositoryName, validationFeedback, InvestigationKnowledge.load(config));
+        stageCheckoutForKind(workspace, workspaceSubPath);
         Job job = job(jobName, workspaceSubPath, prompt);
 
         try (KubernetesClient client = new KubernetesClientBuilder().build()) {
@@ -47,6 +54,7 @@ public final class KubernetesOpenHandsFixer implements OpenHandsFixer {
             Job completed = client.batch().v1().jobs().inNamespace(namespace).withName(jobName)
                     .waitUntilCondition(this::isFinished, config.openhandsTimeout().toMillis(), TimeUnit.MILLISECONDS);
             String output = jobOutput(client, namespace, jobName);
+            copyWorkspaceEditsBack(workspace, workspaceSubPath);
             boolean succeeded = completed != null && completed.getStatus() != null
                     && completed.getStatus().getSucceeded() != null && completed.getStatus().getSucceeded() > 0;
             if (completed == null || !isFinished(completed)) {
@@ -84,9 +92,9 @@ public final class KubernetesOpenHandsFixer implements OpenHandsFixer {
                                         .withPersistentVolumeClaim(new PersistentVolumeClaimVolumeSourceBuilder()
                                                 .withClaimName(config.openhandsWorkspaceClaim()).build())
                                         .build(),
-                                        // OpenHands worker image 0.1.0 persists conversation state beside the
-                                        // workspace at this absolute path. A Job-local emptyDir keeps that
-                                        // compatibility state writable without exposing any additional storage.
+                                        // Image 0.1.0 writes conversation state beside the workspace. Keep both
+                                        // the working copy and that state on this Job-local volume so the
+                                        // non-root 0.1.0 image never needs extra filesystem capabilities.
                                         new VolumeBuilder()
                                                 .withName("openhands-state")
                                                 .withEmptyDir(new EmptyDirVolumeSourceBuilder().build())
@@ -95,16 +103,23 @@ public final class KubernetesOpenHandsFixer implements OpenHandsFixer {
                                         .withName("openhands")
                                         .withImage(config.openhandsContainerImage())
                                         .withImagePullPolicy("IfNotPresent")
-                                        .withWorkingDir("/workspace")
-                                        .withCommand("/app/runtime/openhands-container-worker.sh")
-                                        .withArgs("--workspace", "/workspace", "--prompt", prompt)
+                                        .withWorkingDir(RUNTIME_ROOT)
+                                        .withCommand("sh", "-c",
+                                                "mkdir -p " + RUNTIME_WORKSPACE
+                                                        + " && cp -a /repo/. " + RUNTIME_WORKSPACE + "/ 2>/dev/null || true"
+                                                        + "; /app/runtime/openhands-container-worker.sh \"$@\""
+                                                        + "; status=$?"
+                                                        + "; cp -a " + RUNTIME_WORKSPACE + "/. /repo/"
+                                                        + "; exit $status",
+                                                "openhands")
+                                        .withArgs("--workspace", RUNTIME_WORKSPACE, "--prompt", prompt)
                                         .withEnv(workerEnvironment())
                                         .withVolumeMounts(new VolumeMountBuilder()
-                                                .withName("workspace").withMountPath("/workspace")
+                                                .withName("workspace").withMountPath("/repo")
                                                 .withSubPath(workspaceSubPath).build(),
                                                 new VolumeMountBuilder()
                                                         .withName("openhands-state")
-                                                        .withMountPath("/.openhands-conversations")
+                                                        .withMountPath(RUNTIME_ROOT)
                                                         .build())
                                         .withNewSecurityContext()
                                         .withAllowPrivilegeEscalation(false)
@@ -166,6 +181,42 @@ public final class KubernetesOpenHandsFixer implements OpenHandsFixer {
             }
         });
         return output.toString();
+    }
+
+    private void stageCheckoutForKind(Path workspace, String workspaceSubPath) throws IOException, InterruptedException {
+        if (inCluster()) {
+            return;
+        }
+        String dest = KIND_WORKSPACE_ROOT + "/" + workspaceSubPath;
+        run(List.of("docker", "exec", "-u", "10001", KIND_NODE, "mkdir", "-p", dest));
+        run(List.of("docker", "cp", workspace.toAbsolutePath() + "/.", KIND_NODE + ":" + dest));
+        run(List.of("docker", "exec", KIND_NODE, "chmod", "-R", "a+rwX", dest));
+    }
+
+    private void copyWorkspaceEditsBack(Path workspace, String workspaceSubPath) {
+        if (inCluster()) {
+            return;
+        }
+        String source = KIND_WORKSPACE_ROOT + "/" + workspaceSubPath;
+        try {
+            run(List.of("docker", "cp", KIND_NODE + ":" + source + "/.", workspace.toAbsolutePath().toString()));
+        } catch (Exception exception) {
+            System.out.println("OpenHands could not copy workspace edits back: " + exception.getMessage());
+        }
+    }
+
+    private static boolean inCluster() {
+        return Path.of("/var/run/secrets/kubernetes.io/serviceaccount").toFile().exists();
+    }
+
+    private static void run(List<String> command) throws IOException, InterruptedException {
+        Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
+        byte[] output = process.getInputStream().readAllBytes();
+        if (!process.waitFor(2, TimeUnit.MINUTES) || process.exitValue() != 0) {
+            process.destroyForcibly();
+            throw new IOException("Command failed: " + String.join(" ", command) + "\n"
+                    + new String(output, StandardCharsets.UTF_8));
+        }
     }
 
     private String workspaceSubPath(Path workspace) {
