@@ -2,7 +2,6 @@ package com.asher.bugfixer;
 
 import com.asher.bugfixer.validation.ValidationProfile;
 import com.asher.bugfixer.openhands.OpenHandsProvider;
-import com.asher.bugfixer.openhands.OpenHandsExecutionMode;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Locale;
@@ -24,21 +23,15 @@ public record AppConfig(
         String targetRepositoryName,
         String targetBranch,
         boolean openhandsEnabled,
-        boolean openhandsContainerEnabled,
-        OpenHandsExecutionMode openhandsExecutionMode,
         String openhandsContainerImage,
         String openhandsKubernetesNamespace,
         String openhandsKubernetesServiceAccount,
         String openhandsKubernetesSecretName,
         String openhandsWorkspaceClaim,
         int openhandsJobTtlSeconds,
-        String openhandsPythonBinary,
-        Path openhandsWorkerScript,
         OpenHandsProvider openhandsProvider,
         String openhandsModel,
-        String openhandsGeminiApiKey,
         String groqBaseUrl,
-        String groqApiKey,
         String geminiConnectorBaseUrl,
         String geminiVertexProject,
         String geminiVertexLocation,
@@ -82,22 +75,15 @@ public record AppConfig(
                 value(environment, "TARGET_REPOSITORY_NAME", "unconfigured-repository"),
                 value(environment, "TARGET_BRANCH", "main"),
                 bool(environment, "OPENHANDS_ENABLED", false),
-                bool(environment, "OPENHANDS_CONTAINER_ENABLED", false),
-                OpenHandsExecutionMode.parse(value(environment, "OPENHANDS_EXECUTION_MODE",
-                        bool(environment, "OPENHANDS_CONTAINER_ENABLED", false) ? "DOCKER" : "LOCAL")),
-                value(environment, "OPENHANDS_CONTAINER_IMAGE", "bug-fixer-openhands:0.1.1"),
+                value(environment, "OPENHANDS_CONTAINER_IMAGE", "asherplotnik/bug-fixer-openhands:0.1.0"),
                 value(environment, "OPENHANDS_KUBERNETES_NAMESPACE", "default"),
                 value(environment, "OPENHANDS_KUBERNETES_SERVICE_ACCOUNT", "bug-fixer-worker"),
                 optional(environment, "OPENHANDS_KUBERNETES_SECRET_NAME"),
                 optional(environment, "OPENHANDS_WORKSPACE_CLAIM"),
                 integer(environment, "OPENHANDS_JOB_TTL_SECONDS", 300, 0, 86400),
-                value(environment, "OPENHANDS_PYTHON_BINARY", "python3"),
-                appRoot.resolve(value(environment, "OPENHANDS_WORKER_SCRIPT", "runtime/openhands_worker.py")).normalize(),
                 OpenHandsProvider.parse(value(environment, "OPENHANDS_PROVIDER", "GEMINI")),
                 value(environment, "OPENHANDS_MODEL", "gemini-3.5-flash"),
-                firstNonBlank(optional(environment, "OPENHANDS_GEMINI_API_KEY"), optional(environment, "ADK_API_KEY")),
                 value(environment, "GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
-                optional(environment, "GROQ_API_KEY"),
                 optional(environment, "GEMINI_CONNECTOR_BASE_URL"),
                 optional(environment, "GEMINI_VERTEX_PROJECT"),
                 optional(environment, "GEMINI_VERTEX_LOCATION"),
@@ -153,10 +139,6 @@ public record AppConfig(
     private static String optional(Environment environment, String name) {
         String value = value(environment, name, null);
         return value == null || value.isBlank() ? null : value;
-    }
-
-    private static String firstNonBlank(String preferred, String fallback) {
-        return preferred == null || preferred.isBlank() ? fallback : preferred;
     }
 
     private static Path path(Environment environment, String name) {

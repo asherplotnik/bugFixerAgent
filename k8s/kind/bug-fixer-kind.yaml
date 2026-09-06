@@ -125,8 +125,6 @@ spec:
               value: "true"
             - name: PUBLISHING_ENABLED
               value: "true"
-            - name: OPENHANDS_EXECUTION_MODE
-              value: KUBERNETES
             - name: OPENHANDS_CONTAINER_IMAGE
               value: bug-fixer-openhands:0.1.0
             - name: OPENHANDS_KUBERNETES_NAMESPACE

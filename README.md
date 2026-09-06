@@ -7,7 +7,7 @@ A fail-closed local MVP for a Jira-triggered code-fix agent. It uses Java 21, Go
 - Spring Boot 4.1.1 exposes `POST /webhooks/jira` through `@RestController` and verifies Jira Cloud's HMAC signature over the raw body.
 - It accepts only `jira:issue_updated` events that transition to `Ready for Agent` by default.
 - It deduplicates Jira retry deliveries and responds quickly with `202 Accepted`.
-- The optional worker re-fetches the issue through Jira REST, copies an approved local repository to an isolated workspace, runs an OpenHands Python worker, then invokes only a fixed validation profile.
+- The optional worker re-fetches the issue through Jira REST, copies an approved repository to an isolated workspace, starts a separate OpenHands Kubernetes Job, then invokes only a fixed validation profile.
 - The OpenHands worker is given only its file-editor tool. It has no terminal, browser, web, or custom network tool.
 - ADK can wrap the OpenHands call (`ADK_ENABLED=true`), exposing no model-controlled command, path, repository, branch, or credential.
 - Publishing is intentionally dry-run: it never commits, pushes, creates a PR, comments, or transitions a Jira issue.
@@ -22,13 +22,6 @@ A fail-closed local MVP for a Jira-triggered code-fix agent. It uses Java 21, Go
    mvn spring-boot:run
    ```
 
-   The first OpenHands run also needs its Python worker dependencies. For local development, install its explicit file-editor-only runtime once:
-
-   ```powershell
-   python -m pip install -r runtime/openhands-requirements.txt
-   python -m pip install --no-deps -r runtime/openhands-tools-requirements.txt
-   ```
-
 3. Confirm `GET http://localhost:8080/actuator/health` returns `{"status":"UP"}`.
 
 Kubernetes/production values still come from environment variables. Set a high-entropy `JIRA_WEBHOOK_SECRET` there; the local test secret must never be used outside development.
@@ -39,19 +32,19 @@ The included `debugRepo` setup can exercise the complete local path without Jira
 
 To enable a real **draft** PR, set `worker-enabled`, `openhands-enabled`, `adk-enabled`, and `publishing-enabled` to `true` in the ignored `src/main/resources/application.yaml`. Set `github-token` to a GitHub fine-grained token with **Contents: Read and write** and **Pull requests: Read and write** permissions for `asherplotnik/debugRepo`.
 
-Set `openhands-provider: GEMINI` to use the same Gemini connector credentials as ADK, through the loopback compatibility bridge. Set `openhands-provider: GROQ`, `openhands-model`, and `groq-api-key` to use Groq's OpenAI-compatible endpoint directly. The publisher uses a fixed target repository, creates a unique `bugfix/...` branch, and cannot be selected by Jira or OpenHands input.
+Set `openhands-provider: GEMINI` or `GROQ` in trusted deployment configuration. The OpenHands image receives its credentials from the configured Kubernetes Secret and manages its own connector bridge. The publisher uses a fixed target repository, creates a unique `bugfix/...` branch, and cannot be selected by Jira or OpenHands input.
 
 ## Bitbucket Data Center publishing
 
 Set `BITBUCKET_BASE_URL=https://bitbucket.dev.local:8443`, `BITBUCKET_PROJECT_KEY` to `DMS` or `DIRM`, `TARGET_REPOSITORY_NAME`, and `BITBUCKET_TOKEN`. With `PUBLISHING_ENABLED=true`, the trusted Java workflow clones `https://bitbucket.dev.local:8443/scm/<project>/<repository>.git`, commits the validated diff to `bugfix/<jira-key>`, pushes it, and creates one Bitbucket pull request to the configured target branch. The token is supplied only to Java's Git and REST calls; it is never passed into OpenHands.
 
-For a controlled local worker test, set all of the following deliberately: `WORKER_ENABLED=true`, `JIRA_BASE_URL`, `JIRA_USER_EMAIL`, `JIRA_API_TOKEN`, `TARGET_REPOSITORY`, `OPENHANDS_ENABLED=true`, a selected `OPENHANDS_PROVIDER`, and a non-`NONE` `VALIDATION_PROFILE`. The worker remains dry-run after validation.
+For a controlled worker test, deploy the Java service with `WORKER_ENABLED=true`, `OPENHANDS_ENABLED=true`, a shared workspace PVC, an OpenHands Job service account, and a model Secret. The worker remains dry-run after validation unless publishing is explicitly enabled.
 
 ## One-shot worker mode
 
 Set `WORKER_MODE=true` to run one workflow and exit, which is the execution mode intended for a Kubernetes Job. It does not start the HTTP server. Provide `JOB_ISSUE_KEY` and, when useful, `JOB_ISSUE_ID`, `JOB_DELIVERY_ID`, and `JOB_ISSUE_SUMMARY` as trusted Job environment variables. This mode does not require a Jira webhook secret because it never receives webhooks.
 
-Set `OPENHANDS_CONTAINER_ENABLED=true` to launch each OpenHands attempt in the configured `OPENHANDS_CONTAINER_IMAGE`. Java supplies a fixed Docker invocation, mounts only the prepared workspace at `/workspace`, and passes the trusted model configuration. The model cannot supply Docker arguments, an image name, or a mount path. Build the dedicated worker image with `docker build -f Dockerfile.openhands --tag bug-fixer-openhands:0.1.1 .`.
+Each OpenHands attempt runs in the configured `OPENHANDS_CONTAINER_IMAGE` as a Kubernetes Job. Java supplies the fixed workspace mount, prompt, image name, and model configuration; the model cannot supply Docker arguments, an image name, or a mount path. The approved worker image is `asherplotnik/bug-fixer-openhands:0.1.0`.
 
 ## Security boundary
 

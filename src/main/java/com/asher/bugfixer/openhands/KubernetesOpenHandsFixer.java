@@ -42,7 +42,7 @@ public final class KubernetesOpenHandsFixer implements OpenHandsFixer {
         String namespace = config.openhandsKubernetesNamespace();
         String jobName = jobName(issue.key());
         String workspaceSubPath = workspaceSubPath(workspace);
-        String prompt = OpenHandsPythonFixer.prompt(
+        String prompt = OpenHandsPrompt.create(
                 issue, repositoryName, validationFeedback, InvestigationKnowledge.load(config));
         stageCheckoutForKind(workspace, workspaceSubPath);
         Job job = job(jobName, workspaceSubPath, prompt);

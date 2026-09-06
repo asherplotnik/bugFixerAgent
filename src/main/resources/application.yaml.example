@@ -12,29 +12,21 @@ bugfixer:
   target-repository-name: debugRepo
   target-branch: main
   openhands-enabled: false
-  # Legacy local switch. Prefer openhands-execution-mode below.
-  openhands-container-enabled: false
-  # LOCAL runs Python within this process; DOCKER uses Docker Desktop; KUBERNETES creates one Job per attempt.
-  openhands-execution-mode: LOCAL
-  openhands-container-image: bug-fixer-openhands:0.1.1
+  # OpenHands always runs in a separate Kubernetes/OpenShift Job image.
+  openhands-container-image: asherplotnik/bug-fixer-openhands:0.1.0
   # Kubernetes/OpenShift settings. The Java deployment and each OpenHands Job mount this same PVC.
   openhands-kubernetes-namespace: bug-fixer
   openhands-kubernetes-service-account: bug-fixer-worker
   # openhands-kubernetes-secret-name: bug-fixer-model
   # openhands-workspace-claim: bug-fixer-workspace
   openhands-job-ttl-seconds: 300
-  # Required when KUBERNETES mode is enabled: the mounted shared workspace root.
+  # Required: the mounted shared workspace root.
   # workspace-root: /workspace-root
-  openhands-python-binary: python3
-  openhands-worker-script: runtime/openhands_worker.py
   # Supported values: GEMINI, GROQ. The provider is selected only from trusted configuration.
   openhands-provider: GEMINI
   openhands-model: gemini-3.5-flash
-  # Defaults to adk-api-key when blank.
-  openhands-gemini-api-key:
   groq-base-url: https://api.groq.com/openai/v1
-  groq-api-key:
-  # Root connector URL; the service starts a loopback-only bridge for Gemini.
+  # Root connector URL; the OpenHands image manages its own loopback bridge.
   gemini-connector-base-url:
   gemini-vertex-project:
   gemini-vertex-location:
